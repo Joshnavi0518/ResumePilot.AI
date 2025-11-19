@@ -1,18 +1,26 @@
 // Gemini API Service for AI Resume Builder
 // Clean the API key: remove whitespace, semicolons, and other trailing characters
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim().replace(/[;\s]+$/, ''); 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim().replace(/[;\s]+$/, '');
+const GEMINI_API_URL = import.meta.env.VITE_GEMINI_API_URL?.trim();
 
 // Validate API key on load
 if (!GEMINI_API_KEY) {
   console.error("VITE_GEMINI_API_KEY is not set in environment variables!");
 }
 
+if (!GEMINI_API_URL) {
+  console.error("VITE_GEMINI_API_URL is not set in environment variables!");
+}
+
 // Generic function to call Gemini API
 async function callGeminiAPI(prompt) {
-  // Validate API key before making request
+  // Validate API configuration before making request
   if (!GEMINI_API_KEY) {
     throw new Error("Gemini API key is missing. Please check your .env file and ensure VITE_GEMINI_API_KEY is set.");
+  }
+
+  if (!GEMINI_API_URL) {
+    throw new Error("Gemini API URL is missing. Please check your .env file and ensure VITE_GEMINI_API_URL is set.");
   }
 
   const options = {

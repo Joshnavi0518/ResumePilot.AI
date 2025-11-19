@@ -1,7 +1,14 @@
 import axios from 'axios'
 
-const API_BASE =
-  import.meta.env.VITE_API_URL?.replace(/\/$/, '') || 'http://localhost:5000/api'
+const rawApiBase = import.meta.env.VITE_API_URL?.trim()
+
+if (!rawApiBase) {
+  throw new Error(
+    'VITE_API_URL is not set. Please configure it in your .env file (e.g., VITE_API_URL=http://localhost:5000/api)'
+  )
+}
+
+const API_BASE = rawApiBase.replace(/\/$/, '')
 
 export const authClient = axios.create({
   baseURL: API_BASE,
