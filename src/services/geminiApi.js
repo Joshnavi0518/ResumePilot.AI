@@ -1,9 +1,20 @@
 // Gemini API Service for AI Resume Builder
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || "AIzaSyDifUOP9q1RBslxtV9_O6YyZ0geWiPPILY"; // ⚠️ move to .env in production
+// Clean the API key: remove whitespace, semicolons, and other trailing characters
+const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim().replace(/[;\s]+$/, ''); 
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+
+// Validate API key on load
+if (!GEMINI_API_KEY) {
+  console.error("VITE_GEMINI_API_KEY is not set in environment variables!");
+}
 
 // Generic function to call Gemini API
 async function callGeminiAPI(prompt) {
+  // Validate API key before making request
+  if (!GEMINI_API_KEY) {
+    throw new Error("Gemini API key is missing. Please check your .env file and ensure VITE_GEMINI_API_KEY is set.");
+  }
+
   const options = {
     method: "POST",
     headers: {
@@ -23,14 +34,32 @@ async function callGeminiAPI(prompt) {
     const response = await fetch(GEMINI_API_URL, options);
     const data = await response.json();
     
+    // Check for API errors first
+    if (!response.ok) {
+      const errorMessage = data?.error?.message || data?.error || `API Error: ${response.status} ${response.statusText}`;
+      console.error("Gemini API Error:", errorMessage);
+      throw new Error(`Gemini API Error: ${errorMessage}`);
+    }
+    
+    // Check if response has the expected structure
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       return data.candidates[0].content.parts[0].text;
+    } else if (data?.error) {
+      // Handle API error responses
+      const errorMessage = data.error.message || JSON.stringify(data.error);
+      console.error("Gemini API Error Response:", errorMessage);
+      throw new Error(`Gemini API Error: ${errorMessage}`);
     } else {
-      throw new Error("Unexpected API response format");
+      console.error("Unexpected API response format:", data);
+      throw new Error("Unexpected API response format. Please check the API response.");
     }
   } catch (error) {
     console.error("Error calling Gemini API:", error);
-    throw error;
+    // Re-throw with more context if it's not already a formatted error
+    if (error.message && error.message.includes("Gemini API")) {
+      throw error;
+    }
+    throw new Error(`Failed to call Gemini API: ${error.message || error}`);
   }
 }
 
@@ -163,10 +192,15 @@ Format as a proper cover letter with appropriate greeting and closing.`;
 
   try {
     const response = await callGeminiAPI(prompt);
+    if (!response || response.trim().length === 0) {
+      throw new Error("Received empty response from API");
+    }
     return response;
   } catch (error) {
     console.error("Error generating cover letter:", error);
-    return "Error generating cover letter. Please try again.";
+    // Return a more descriptive error message
+    const errorMessage = error.message || "Unknown error occurred";
+    throw new Error(`Failed to generate cover letter: ${errorMessage}. Please check your API key and try again.`);
   }
 }
 
