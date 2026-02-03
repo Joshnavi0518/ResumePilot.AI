@@ -1,73 +1,83 @@
-// Gemini API Service for AI Resume Builder
+// Groq API Service for AI Resume Builder
 // Clean the API key: remove whitespace, semicolons, and other trailing characters
-const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY?.trim().replace(/[;\s]+$/, '');
-const GEMINI_API_URL = import.meta.env.VITE_GEMINI_API_URL?.trim();
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY?.trim().replace(/[;\s]+$/, '');
+const GROQ_API_URL = import.meta.env.VITE_GROQ_API_URL?.trim() || "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = import.meta.env.VITE_GROQ_MODEL?.trim() || "llama-3.3-70b-versatile";
 
 // Validate API key on load
-if (!GEMINI_API_KEY) {
-  console.error("VITE_GEMINI_API_KEY is not set in environment variables!");
+if (!GROQ_API_KEY) {
+  console.error("VITE_GROQ_API_KEY is not set in environment variables!");
 }
 
-if (!GEMINI_API_URL) {
-  console.error("VITE_GEMINI_API_URL is not set in environment variables!");
-}
-
-// Generic function to call Gemini API
-async function callGeminiAPI(prompt) {
+// Generic function to call Groq API (OpenAI-compatible chat completions)
+async function callGroqAPI(prompt, options = {}) {
   // Validate API configuration before making request
-  if (!GEMINI_API_KEY) {
-    throw new Error("Gemini API key is missing. Please check your .env file and ensure VITE_GEMINI_API_KEY is set.");
+  if (!GROQ_API_KEY) {
+    throw new Error("Groq API key is missing. Please check your .env file and ensure VITE_GROQ_API_KEY is set.");
   }
 
-  if (!GEMINI_API_URL) {
-    throw new Error("Gemini API URL is missing. Please check your .env file and ensure VITE_GEMINI_API_URL is set.");
+  if (!GROQ_API_URL) {
+    throw new Error("Groq API URL is missing. Please check your .env file and ensure VITE_GROQ_API_URL is set.");
   }
 
-  const options = {
+  const {
+    systemPrompt = "You are a helpful assistant for resume, cover letter, and ATS optimization.",
+    temperature = 0.7,
+    maxTokens = 2048,
+  } = options;
+
+  const requestBody = {
+    model: GROQ_MODEL,
+    messages: [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: prompt },
+    ],
+    temperature,
+    max_tokens: maxTokens,
+  };
+
+  const fetchOptions = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "X-goog-api-key": GEMINI_API_KEY,
+      "Authorization": `Bearer ${GROQ_API_KEY}`,
     },
-    body: JSON.stringify({
-      contents: [
-        {
-          parts: [{ text: prompt }],
-        },
-      ],
-    }),
+    body: JSON.stringify(requestBody),
   };
 
   try {
-    const response = await fetch(GEMINI_API_URL, options);
+    const response = await fetch(GROQ_API_URL, fetchOptions);
     const data = await response.json();
-    
+
     // Check for API errors first
     if (!response.ok) {
-      const errorMessage = data?.error?.message || data?.error || `API Error: ${response.status} ${response.statusText}`;
-      console.error("Gemini API Error:", errorMessage);
-      throw new Error(`Gemini API Error: ${errorMessage}`);
+      const errorMessage =
+        data?.error?.message ||
+        data?.error ||
+        `API Error: ${response.status} ${response.statusText}`;
+      console.error("Groq API Error:", errorMessage);
+      throw new Error(`Groq API Error: ${errorMessage}`);
     }
-    
+
     // Check if response has the expected structure
-    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      return data.candidates[0].content.parts[0].text;
+    if (data?.choices?.[0]?.message?.content) {
+      return data.choices[0].message.content;
     } else if (data?.error) {
       // Handle API error responses
       const errorMessage = data.error.message || JSON.stringify(data.error);
-      console.error("Gemini API Error Response:", errorMessage);
-      throw new Error(`Gemini API Error: ${errorMessage}`);
+      console.error("Groq API Error Response:", errorMessage);
+      throw new Error(`Groq API Error: ${errorMessage}`);
     } else {
-      console.error("Unexpected API response format:", data);
+      console.error("Unexpected Groq API response format:", data);
       throw new Error("Unexpected API response format. Please check the API response.");
     }
   } catch (error) {
-    console.error("Error calling Gemini API:", error);
+    console.error("Error calling Groq API:", error);
     // Re-throw with more context if it's not already a formatted error
-    if (error.message && error.message.includes("Gemini API")) {
+    if (error.message && error.message.includes("Groq API")) {
       throw error;
     }
-    throw new Error(`Failed to call Gemini API: ${error.message || error}`);
+    throw new Error(`Failed to call Groq API: ${error.message || error}`);
   }
 }
 
@@ -89,7 +99,7 @@ Examples:
 Be specific and concise. Do not include any additional text or explanation.`;
 
   try {
-    const response = await callGeminiAPI(prompt);
+    const response = await callGroqAPI(prompt);
     return response.trim();
   } catch (error) {
     return "Detected Role: General Position";
@@ -142,7 +152,11 @@ Ensure the content is:
 - Professional and concise`;
 
   try {
-    const response = await callGeminiAPI(prompt);
+    const response = await callGroqAPI(prompt, {
+      systemPrompt: "You are a professional career coach and resume optimization expert that returns clean, strictly valid JSON when asked.",
+      temperature: 0.6,
+      maxTokens: 2048,
+    });
     // Clean the response to remove markdown formatting
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     console.log("Cleaned response:", cleanedResponse);
@@ -199,7 +213,11 @@ Requirements:
 Format as a proper cover letter with appropriate greeting and closing.`;
 
   try {
-    const response = await callGeminiAPI(prompt);
+    const response = await callGroqAPI(prompt, {
+      systemPrompt: "You are an expert cover letter writer. Generate polished, professional, role-specific cover letters.",
+      temperature: 0.8,
+      maxTokens: 1024,
+    });
     if (!response || response.trim().length === 0) {
       throw new Error("Received empty response from API");
     }
@@ -257,7 +275,11 @@ Evaluate based on:
 - Professional presentation`;
 
   try {
-    const response = await callGeminiAPI(prompt);
+    const response = await callGroqAPI(prompt, {
+      systemPrompt: "You are an ATS (Applicant Tracking System) and resume analysis expert. Always respond with strictly valid JSON.",
+      temperature: 0.4,
+      maxTokens: 1024,
+    });
     // Clean the response to remove markdown formatting
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     console.log("Cleaned ATS response:", cleanedResponse);
@@ -312,7 +334,11 @@ Focus on:
 - Current skills that match the requirements`;
 
   try {
-    const response = await callGeminiAPI(prompt);
+    const response = await callGroqAPI(prompt, {
+      systemPrompt: "You are a career coach performing detailed skill gap analysis. Always respond with strictly valid JSON.",
+      temperature: 0.5,
+      maxTokens: 1024,
+    });
     // Clean the response to remove markdown formatting
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     console.log("Cleaned skill gap response:", cleanedResponse);
@@ -364,7 +390,11 @@ Requirements:
 - Provide clear learning outcomes`;
 
   try {
-    const response = await callGeminiAPI(prompt);
+    const response = await callGroqAPI(prompt, {
+      systemPrompt: "You are a mentor creating realistic, beginner-friendly project ideas. Always respond with strictly valid JSON.",
+      temperature: 0.8,
+      maxTokens: 1024,
+    });
     // Clean the response to remove markdown formatting
     const cleanedResponse = response.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     console.log("Cleaned project suggestions response:", cleanedResponse);
@@ -413,7 +443,11 @@ Consider:
 - Professional presentation`;
 
   try {
-    const response = await callGeminiAPI(prompt);
+    const response = await callGroqAPI(prompt, {
+      systemPrompt: "You are a resume template selection assistant.",
+      temperature: 0.3,
+      maxTokens: 128,
+    });
     return response.trim();
   } catch (error) {
     return "Modern"; // Default fallback

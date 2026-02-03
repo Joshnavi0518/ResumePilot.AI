@@ -91,18 +91,18 @@ function HomePage() {
 
       setAnalysis(analysisPayload);
       navigate('/analysis');
-    } catch (error) {
-      console.error("Error in generation process:", error);
-      const errorMessage = error?.message || "Unknown error occurred";
-      // Show more specific error message
-      if (errorMessage.includes("API key") || errorMessage.includes("VITE_GEMINI_API_KEY")) {
-        alert("API Key Error: Please check your .env file and ensure VITE_GEMINI_API_KEY is set correctly. You may need to restart your dev server after updating the .env file.");
-      } else if (errorMessage.includes("cover letter")) {
-        alert(`Error generating cover letter: ${errorMessage}`);
-      } else {
-        alert(`Error generating analysis: ${errorMessage}. Please check your console for more details.`);
-      }
-    } finally {
+      } catch (error) {
+        console.error("Error in generation process:", error);
+        const errorMessage = error?.message || "Unknown error occurred";
+        // Show more specific error message
+        if (errorMessage.includes("API key") || errorMessage.includes("VITE_GROQ_API_KEY")) {
+          alert("API Key Error: Please check your .env file and ensure VITE_GROQ_API_KEY is set correctly. You may need to restart your dev server after updating the .env file.");
+        } else if (errorMessage.includes("cover letter")) {
+          alert(`Error generating cover letter: ${errorMessage}`);
+        } else {
+          alert(`Error generating analysis: ${errorMessage}. Please check your console for more details.`);
+        }
+      } finally {
       setIsLoading(false);
       setCurrentStep("form");
     }

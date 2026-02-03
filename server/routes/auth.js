@@ -5,10 +5,15 @@ import User from '../models/User.js'
 
 const router = express.Router()
 
-const createJwt = (userId) =>
-  jwt.sign({ sub: userId }, process.env.JWT_SECRET || 'resume_secret', {
+const createJwt = (userId) => {
+  if (!process.env.JWT_SECRET) {
+    throw new Error('JWT_SECRET is not set in environment variables')
+  }
+
+  return jwt.sign({ sub: userId }, process.env.JWT_SECRET, {
     expiresIn: '7d',
   })
+}
 
 router.post('/register', async (req, res) => {
   try {
